@@ -151,7 +151,8 @@ function entityimport_my_get_settings($id, $import_map = array()) {
     'map' => '{}',
     'offset' => 0,
     'header' => TRUE,
-    'to' => array('user', 'user|user')
+    'to' => array('user', 'user|user'),
+    'debug' => FALSE,
   );
   $settings['map'] = is_array($settings['map']) ? $settings['map'] : json_decode($settings['map'], TRUE);
   return $settings;

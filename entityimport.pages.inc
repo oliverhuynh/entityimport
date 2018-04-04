@@ -124,10 +124,11 @@ function entityimport_import_form($form, &$form_state) {
     '#type' => 'textarea',
     '#title' => t("Text area JSON"),
     '#default_value' => '{"title":0}',
-    '#description' => nl2br(' * Format of fieldvalue would be opfieldidentify-column0-opcolumn1|opdatatype-opdatatypesecond-opdatatypearg|opdataverify
-    opfieldidentify-column0-opcolumn1 | opdatatype-opdatatypesecond-opdatatypearg | opdataverify | optional_check_existed-optionalfind_existed
+    '#description' => nl2br(' * Format of fieldvalue would be opfieldidentify-column0-opcolumn1|opdatatype-opdatatypesecond-opdatatypearg|data_verify - data_singlealter
+    opfieldidentify-column0-opcolumn1 | opdatatype-opdatatypesecond-opdatatypearg | data_verify - data_singlealter | optional_check_existed-optionalfind_existed
  * Simple Ex column 2: 2 =
  * Ex: 0-1
+ * Ex: null-2 => skip using field_identify, 2 will be the data to set to the field
  * Ex: $name allows column to be in string, not by index
  * Ex: 0|||1-1 => Get col 1, find existed item by this, and use data from existed entity (use data from existed:1 - find existed:1)
  * Ex: tid-7-25|check-practice_are
@@ -446,9 +447,10 @@ function entityimport_get_map($context) {
 }
 
 /**
- * Format of fieldvalue would be opfieldidentify-column0-opcolumn1 | opdatatype-opdatatypesecond-opdatatypearg | opdataverify | optional_check_existed-optionalfind_existed
+ * Format of fieldvalue would be opfieldidentify-column0-opcolumn1 | opdatatype-opdatatypesecond-opdatatypearg | data_verify- data_singlealter | optional_check_existed-optionalfind_existed
  * Ex: 2
  * Ex: 0-1
+ * Ex: null-2 => skip using field_identify, 2 will be the data to set to the field
  * Ex: 0|||1-1 => Get col 1, find existed item by this, and use data from existed entity (use data from existed:1 - find existed:1)
  * Ex: $name allow column to be in string, not by index
  * Ex: TextToStore | string
@@ -465,7 +467,12 @@ function extract_callback_filters($data) { // Should be $format
   $tmp = $tmp + array(0,0);
   list($data_callback_filters['data_compare_existed'], $data_callback_filters['find_existed']) = $tmp;
 
-  $data_callback_filters['data_verify'] = isset($data_filter[2]) ? $data_filter[2] : '';
+  // Data Verify filter
+  $tmp = isset($data_filter[2]) ? $data_filter[2] : '';
+  $tmp = explode("-", $tmp);
+  $tmp = $tmp + array('','');
+  list($data_callback_filters['data_verify'], $data_callback_filters['data_singlealter']) = $tmp;
+
   $data_cols = explode('-', $data_filter[0]);
   $data_filter = count($data_filter) > 1 ? $data_filter[1] : 'plain';
   $data_filter = explode('-', $data_filter);
@@ -500,6 +507,13 @@ function data_type_call_special_arraykeys($row, $skips, $context, $data_cols, $d
 function data_type_call_special_string($row, $skips, $context, $data_cols, $data_filter, $headline) {
   $text = isset($data_cols[0]) ? $data_cols[0] : $data_filter['field_identify'];
   return $text;
+}
+
+/**
+ * Implement of data_type_call_special_SPECIALCALL
+ */
+function data_type_call_special_array($row, $skips, $context, $data_cols, $data_filter, $headline) {
+  return $row[$data_cols[0]];
 }
 
 /**
@@ -540,6 +554,16 @@ function data_type_call__check(&$row, $skips, $context, $data_col, $data_filter,
     return $headlines[$data_col];
   }
   return $row[$data_col];
+}
+
+/**
+ * Implement of data_singlealter_ALTER
+ * TODO: Ensure the old file to be removed
+ */
+function data_singlealter_url2image($return_value, $row, $skips, $context, $data_filter, $headlines) {
+  $file = file_save_data(file_get_contents($return_value), file_default_scheme().'://field/image/' . basename($return_value));
+  $file->status = 1;
+  return (array) $file;
 }
 
 /**
@@ -655,7 +679,12 @@ function entityimport_import_do_import($row, $headlines, &$context) {
         $parsing_data = $parsing_data_is_array ? $parsing_data : array($parsing_data);
         foreach ($parsing_data as $parsing_data_value) {
           if ($parsing_data_value !== FALSE) {
-            $account[$field][LANGUAGE_NONE][] = array($field_identify => $parsing_data_value,);
+            if ($field_identify == 'null') {
+              $account[$field][LANGUAGE_NONE][] = $parsing_data_value;
+            }
+            else {
+              $account[$field][LANGUAGE_NONE][] = array($field_identify => $parsing_data_value,);
+            }
           }
         }
       }
@@ -703,7 +732,14 @@ function entityimport_import_do_import($row, $headlines, &$context) {
       $_key = $typeinfo['bundle keys']['bundle'];
       $account->{$_key} = $bundle;
     }
-    entity_save($type, $account);
+    if (!$settings['debug']) {
+      entity_save($type, $account);
+    }
+    else {
+      //-----------DEBUGGING----------
+      watchdog('DEBUG', __FUNCTION__ . print_r($account, TRUE));
+      //-----------END DEBUGGING----------
+    }
   }
 
   return $skips;
@@ -758,7 +794,12 @@ function roschier_import_data_clean_single_value($return_value, $row, &$skip, &$
     }
 
     $return_value = $d;
-    return $return_value;
+  }
+
+  // Filter
+  $verify_call = 'data_singlealter_' . $data_filter['data_singlealter'];
+  if (function_exists($verify_call)) {
+    $return_value = $verify_call($return_value, $row, $skips, $context, $data_filter, $headlines);
   }
   return $return_value;
 }
@@ -793,12 +834,14 @@ function roschier_import_data_cell_to_user_field(&$row, &$skips, &$context, $dat
   $skip = !$verified;
 
   // Core verify
-  if (!$skip && !drupal_validate_utf8($return_value)) {
-    $d = iconv("UTF-8", "UTF-8//IGNORE", $return_value);
-    if (!drupal_validate_utf8($d)) {
-      $skip = TRUE;
+  if (is_string($return_value)) {
+    if (!$skip && !drupal_validate_utf8($return_value)) {
+      $d = iconv("UTF-8", "UTF-8//IGNORE", $return_value);
+      if (!drupal_validate_utf8($d)) {
+        $skip = TRUE;
+      }
+      $return_value = $d;
     }
-    $return_value = $d;
   }
 
   if ($skip) {

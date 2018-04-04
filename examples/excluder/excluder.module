@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * Implements hook_import_map().
+ */
+function excluder_import_map() {
+  return array(
+    'excluder'  => t("Excluder"),
+  );
+}
+
+/**
+ * Implements entityimport_import_map_settings_MAPID().
+ */
+function entityimport_import_map_settings_excluder() {
+  return array(
+    'single' => TRUE,
+    'remove' => FALSE,
+    'header' => FALSE,
+    'map' => '{
+    "title": "0|||1-1"
+}',
+    'to' => array('excluder', 'excluder|excluder'),
+  );
+}

@@ -1,0 +1,91 @@
+<?php
+
+/**
+ * Implements hook_import_map().
+ */
+function ee_rsubscribers_import_map() {
+  return array(
+    'sample' => t('Sample 1. Keywords in column. Check the sample !here.', array('!here' => l('here', drupal_get_path('module', 'ee_rsubscribers') . '/sample.csv'))),
+    'sample2' => t('Sample 2. Keywords in the cell. Check the sample !here.', array('!here' => l('here', drupal_get_path('module', 'ee_rsubscribers') . '/sample2.csv'))),
+    'sample3' => t('Sample 3. Keywords is manually filled. Check the sample !here.', array('!here' => l('here', drupal_get_path('module', 'ee_rsubscribers') . '/sample3.csv'))),
+    'sample4' => t('Sample 4. Keywords is manually filled. Check the sample !here.', array('!here' => l('here', drupal_get_path('module', 'ee_rsubscribers') . '/sample4.csv'))),
+  );
+}
+/**
+ * Implements entityimport_import_map_settings_MAPID().
+ */
+function entityimport_import_map_settings_sample() {
+  return array(
+    'map' => '{
+    "mail": "6||required",
+    "field_user_first_name": 3,
+    "field_user_last_name": 4,
+    "field_company": 1,
+    "field_practice_area": "tid-7-25|check-practice_area",
+    "field_industry_sector": "tid-27-43|check-industry_sector",
+    "roles": "2-6|arraykeys",
+    "name": "|generated_from_mail||1",
+    "pass": "0|user_pass_rehash",
+    "status": 44
+}'
+  );
+}
+
+/**
+ * Implements entityimport_import_map_settings_MAPID().
+ */
+function entityimport_import_map_settings_sample2() {
+  return array(
+    'map' => '{
+    "mail": "2||required",
+    "field_user_first_name": 0,
+    "field_user_last_name": 1,
+    "field_practice_area": "tid-3|search-practice_area",
+    "field_industry_sector": "tid-4-5|search-industry_sector",
+    "name": "|generated_from_mail||1",
+    "pass": "0|user_pass_rehash",
+    "roles": "2-6|arraykeys"
+}'
+  );
+}
+/**
+ * Implements entityimport_import_map_settings_MAPID().
+ */
+function entityimport_import_map_settings_sample3() {
+  return array(
+    'term_to_entity' => TRUE,
+    'offset' => 3,
+    'map' => '{
+    "field_user_first_name": "0|explodelast--1|2chars",
+    "field_user_last_name": "0|explodelast--0|2chars",
+    "field_practice_area": "tid-keywords|defined-practice_area",
+    "field_industry_sector": "tid-keywords|defined-industry_sector",
+    "field_crm_id": 1,
+    "field_company": 4,
+    "name": "|generated_from_mail||1",
+    "pass": "0|user_pass_rehash",
+    "mail": "9||required"
+}'
+  );
+}
+
+/**
+ * Implements entityimport_import_map_settings_MAPID().
+ */
+function entityimport_import_map_settings_sample4() {
+  return array(
+    'term_to_entity' => TRUE,
+    'offset' => 3,
+    'map' => '{
+    "field_user_first_name": "0|explodelast--0|2chars",
+    "field_user_last_name": "0|explodelast--1|2chars",
+    "field_practice_area": "tid-keywords|defined-practice_area",
+    "field_industry_sector": "tid-keywords|defined-industry_sector",
+    "field_country": 3,
+    "field_company": 1,
+    "name": "|generated_from_mail||1",
+    "pass": "0|user_pass_rehash",
+    "mail": "2||required"
+}'
+  );
+}
